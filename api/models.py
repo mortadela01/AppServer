@@ -1,38 +1,73 @@
 from django.db import models
 
+# class User(models.Model):
+#     id_user = models.BigAutoField(primary_key=True)
+#     name = models.CharField(max_length=100)
+#     email = models.CharField(max_length=100)
+#     password = models.CharField(max_length=250)  # En producción, usa campos de contraseña seguros
+
+#     class Meta:
+#         db_table = 'TBL_USER'  # Esto indica a Django que use tu tabla existente
+#         managed = False  # Indica a Django que no gestione esta tabla (ya existe)
+
 class User(models.Model):
     id_user = models.BigAutoField(primary_key=True)
     name = models.CharField(max_length=100)
     email = models.CharField(max_length=100)
-    password = models.CharField(max_length=250)  # En producción, usa campos de contraseña seguros
+    password = models.CharField(max_length=250, blank=True, null=True)  # Igual que appWeb
 
     class Meta:
-        db_table = 'TBL_USER'  # Esto indica a Django que use tu tabla existente
-        managed = False  # Indica a Django que no gestione esta tabla (ya existe)
+        db_table = 'TBL_USER'
+        managed = False
+
+# class Deceased(models.Model):
+#     id_deceased = models.BigAutoField(primary_key=True)
+#     name = models.CharField(max_length=100)
+#     date_birth = models.DateTimeField()
+#     date_death = models.DateTimeField()
+#     description = models.CharField(max_length=100)
+#     burial_place = models.CharField(max_length=100)
+#     visualization_state = models.BooleanField()
+#     visualization_code = models.CharField(max_length=100)
+
+#     class Meta:
+#         db_table = 'TBL_DECEASED'
+#         managed = False
 
 class Deceased(models.Model):
     id_deceased = models.BigAutoField(primary_key=True)
     name = models.CharField(max_length=100)
-    date_birth = models.DateTimeField()
-    date_death = models.DateTimeField()
-    description = models.CharField(max_length=100)
-    burial_place = models.CharField(max_length=100)
-    visualization_state = models.BooleanField()
-    visualization_code = models.CharField(max_length=100)
+    date_birth = models.DateTimeField(null=True, blank=True)  # ← CAMBIO
+    date_death = models.DateTimeField(null=True, blank=True)  # ← CAMBIO
+    description = models.CharField(max_length=100, null=True, blank=True)  # ← CAMBIO
+    burial_place = models.CharField(max_length=100, null=True, blank=True)  # ← CAMBIO
+    visualization_state = models.BooleanField(default=True)  # ← CAMBIO
+    visualization_code = models.CharField(max_length=100, null=True, blank=True)  # ← CAMBIO
 
     class Meta:
         db_table = 'TBL_DECEASED'
         managed = False
 
+# class Video(models.Model):
+#     id_video = models.BigAutoField(primary_key=True)
+#     video_link = models.CharField(max_length=1000)
+#     event_title = models.CharField(max_length=100)
+#     description = models.CharField(max_length=100)
+
+#     class Meta:
+#         db_table = 'TBL_VIDEO'
+#         managed = False
+
 class Video(models.Model):
     id_video = models.BigAutoField(primary_key=True)
     video_link = models.CharField(max_length=1000)
     event_title = models.CharField(max_length=100)
-    description = models.CharField(max_length=100)
+    description = models.CharField(max_length=255)  # ← CAMBIO para igualar con appWeb
 
     class Meta:
         db_table = 'TBL_VIDEO'
         managed = False
+
 
 class VideoMetadata(models.Model):
     id_metadata = models.BigAutoField(primary_key=True)
@@ -53,11 +88,21 @@ class DeceasedVideo(models.Model):
         managed = False
         unique_together = (('id_deceased', 'id_metadata'),)
 
+# class Image(models.Model):
+#     id_image = models.BigAutoField(primary_key=True)
+#     image_link = models.CharField(max_length=1000)
+#     event_title = models.CharField(max_length=100)
+#     description = models.CharField(max_length=100)
+
+#     class Meta:
+#         db_table = 'TBL_IMAGE'
+#         managed = False
+
 class Image(models.Model):
     id_image = models.BigAutoField(primary_key=True)
     image_link = models.CharField(max_length=1000)
     event_title = models.CharField(max_length=100)
-    description = models.CharField(max_length=100)
+    description = models.CharField(max_length=255)  # ← CAMBIO para igualar con appWeb
 
     class Meta:
         db_table = 'TBL_IMAGE'
