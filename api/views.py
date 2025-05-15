@@ -1,14 +1,21 @@
-from django.shortcuts import render
 
+from rest_framework import permissions
+from django.shortcuts import render
 from rest_framework import generics
 from .models import *
-
 from .serializers import *
 
 # User CRUD
 class UserListCreate(generics.ListCreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
+
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            # Permitir crear sin autenticación
+            return [permissions.AllowAny()]
+        # Para otros métodos, requiere autenticación
+        return [permissions.IsAuthenticated()]
 
 class UserRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()

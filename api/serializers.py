@@ -1,10 +1,33 @@
 from rest_framework import serializers
 from .models import *
 
+# class UserSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = User
+#         fields = '__all__'  # No incluyas la contraseña en el serializer (sí la incluyo jaja)
+
 class UserSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
+
     class Meta:
         model = User
-        fields = '__all__'  # No incluyas la contraseña en el serializer (sí la incluyo jaja)
+        fields = ['id_user', 'email', 'name', 'password']
+
+    def create(self, validated_data):
+        password = validated_data.pop('password')
+        user = User(**validated_data)
+        user.set_password(password)  # aquí se hace el hash
+        user.save()
+        return user
+    
+    def update(self, instance, validated_data):
+        password = validated_data.pop('password', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        if password:
+            instance.set_password(password)
+        instance.save()
+        return instance
 
 class DeceasedSerializer(serializers.ModelSerializer):
     class Meta:
