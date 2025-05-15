@@ -27,6 +27,24 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+AUTHENTICATION_BACKENDS = (
+    'social_core.backends.google.GoogleOAuth2',
+    'django.contrib.auth.backends.ModelBackend',  # tu backend por defecto
+)
+
+SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = '776557165549-k3a59gfcinfnqfd67un5hufctjo4goht.apps.googleusercontent.com'
+SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = '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'
+
+# URLS de login y redirección
+
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = '/api/users/'  # o donde quieras que vaya tras login
+LOGOUT_REDIRECT_URL = '/'
+
+
+# Callback de redirección
+SOCIAL_AUTH_GOOGLE_OAUTH2_REDIRECT_URI = 'http://localhost:8000/auth/complete/google-oauth2/'
+
 
 # Application definition
 
@@ -39,6 +57,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'oauth2_provider',
     'rest_framework',
+    'social_django',
     'api',
 ]
 
@@ -73,6 +92,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'social_django.context_processors.backends',
+                'social_django.context_processors.login_redirect',
             ],
         },
     },
@@ -138,6 +159,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'social_django.middleware.SocialAuthExceptionMiddleware',
 ]
 
 # DEBUG para solventar problemas de autorización

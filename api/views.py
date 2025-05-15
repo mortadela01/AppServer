@@ -5,6 +5,16 @@ from rest_framework import generics
 from .models import *
 from .serializers import *
 
+import json
+from django.http import JsonResponse
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+from google.auth.transport import requests
+from django.contrib.auth import get_user_model
+from oauth2_provider.models import AccessToken, Application, RefreshToken
+from django.utils import timezone
+from datetime import timedelta
+
 # User CRUD
 class UserListCreate(generics.ListCreateAPIView):
     queryset = User.objects.all()
@@ -144,3 +154,86 @@ class QRListCreate(generics.ListCreateAPIView):
 class QRRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
     queryset = QR.objects.all()
     serializer_class = QRSerializer
+
+# Google AUTH
+
+User = get_user_model()
+
+def google_login(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST method required'}, status=405)
+
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+    token = body.get('id_token')
+    if not token:
+        return JsonResponse({'error': 'id_token missing'}, status=400)
+
+    try:
+        # Verificar token con Google
+        idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), '776557165549-k3a59gfcinfnqfd67un5hufctjo4goht.apps.googleusercontent.com')
+        email = idinfo['email']
+    except ValueError:
+        return JsonResponse({'error': 'Invalid token'}, status=400)
+
+    user, created = User.objects.get_or_create(email=email)
+    if created:
+        user.set_unusable_password()
+        user.save()
+
+    try:
+        app = Application.objects.get(name='Mausoleum API')
+    except Application.DoesNotExist:
+        return JsonResponse({'error': 'OAuth application not found'}, status=500)
+
+    expires = timezone.now() + timedelta(seconds=36000)
+
+    # access_token = AccessToken.objects.create(
+    #     user=user,
+    #     application=app,
+    #     # token=AccessToken.generate_token(),
+    #     token=generate_token(),
+    #     expires=expires,
+    #     scope='read write'
+    # )
+    # refresh_token = RefreshToken.objects.create(
+    #     user=user,
+    #     # token=RefreshToken.generate_token(),
+    #     token=generate_token(),
+    #     application=app,
+    #     access_token=access_token
+    # )
+
+    from oauthlib.common import generate_token
+
+
+    access_token_str = generate_token()
+    refresh_token_str = generate_token()
+
+
+    access_token = AccessToken.objects.create(
+    user=user,
+    application=app,
+    token=access_token_str,
+    expires=expires,
+    scope='read write'
+    )
+    refresh_token = RefreshToken.objects.create(
+        user=user,
+        token=refresh_token_str,
+        application=app,
+        access_token=access_token
+    )
+
+
+
+    return JsonResponse({
+        'access_token': access_token.token,
+        'expires_in': 36000,
+        'refresh_token': refresh_token.token,
+        'token_type': 'Bearer',
+        'scope': 'read write'
+    })

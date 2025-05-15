@@ -55,4 +55,7 @@ urlpatterns = [
     # QR Codes
     path('qr-codes/', views.QRListCreate.as_view()),
     path('qr-codes/<int:pk>/', views.QRRetrieveUpdateDestroy.as_view()),
+
+    # Google AUTH
+    path('auth/google/', views.google_login, name='google_login'),
 ]
