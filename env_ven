@@ -1,5 +1,0 @@
-Crear un directorio llamado "App" y sobre él ejecutar
-
-en .\AppServer: python -m venv ..\env # crear el entorno virtual al mismo nivel que AppServer
-en .\AppServer: ..\env\Scripts\activate # Ingresar al entorno virtual creado
-en .\AppServer: pip install -r requirements.txt # Para instalar las dependencias sobre env

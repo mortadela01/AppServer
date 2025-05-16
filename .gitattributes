@@ -1,0 +1,5 @@
+# For SQL files:
+*.sql text eol=crlf
+
+# For JSON files:
+*.json text eol=lf

@@ -1,34 +1,13 @@
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager, Group, Permission
 from django.db import models
 
-# class User(models.Model):
-#     id_user = models.BigAutoField(primary_key=True)
-#     name = models.CharField(max_length=100)
-#     email = models.CharField(max_length=100)
-#     password = models.CharField(max_length=250)  # En producción, usa campos de contraseña seguros
-
-#     class Meta:
-#         db_table = 'TBL_USER'  # Esto indica a Django que use tu tabla existente
-#         managed = False  # Indica a Django que no gestione esta tabla (ya existe)
-
-# class User(models.Model):
-#     id_user = models.BigAutoField(primary_key=True)
-#     name = models.CharField(max_length=100)
-#     email = models.CharField(max_length=100)
-#     password = models.CharField(max_length=250, blank=True, null=True)  # Igual que appWeb
-
-#     class Meta:
-#         db_table = 'TBL_USER'
-#         managed = False
-
-
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
         if not email:
             raise ValueError('El email es obligatorio')
         email = self.normalize_email(email)
         user = self.model(email=email, **extra_fields)
-        user.set_password(password)  # Hashea la contraseña
+        user.set_password(password)
         user.save(using=self._db)
         return user
 
@@ -37,34 +16,32 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault('is_superuser', True)
         extra_fields.setdefault('is_active', True)
 
-        if extra_fields.get('is_staff') is not True:
+        if not extra_fields.get('is_staff'):
             raise ValueError('Superuser debe tener is_staff=True.')
-        if extra_fields.get('is_superuser') is not True:
+        if not extra_fields.get('is_superuser'):
             raise ValueError('Superuser debe tener is_superuser=True.')
 
         return self.create_user(email, password, **extra_fields)
 
-
 class User(AbstractBaseUser, PermissionsMixin):
-    # tus campos
     id_user = models.BigAutoField(primary_key=True)
     name = models.CharField(max_length=100, blank=True)
     email = models.EmailField(unique=True)
+    password = models.CharField(max_length=250)
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     last_login = models.DateTimeField(blank=True, null=True)
 
-    # Sobrescribir related_name para evitar choque con auth.User
     groups = models.ManyToManyField(
         Group,
-        related_name='api_user_set',  # cambiar aquí el related_name
+        related_name='api_user_set',
         blank=True,
         help_text='Los grupos a los que pertenece el usuario.',
         verbose_name='groups',
     )
     user_permissions = models.ManyToManyField(
         Permission,
-        related_name='api_user_set',  # cambiar aquí el related_name
+        related_name='api_user_set',
         blank=True,
         help_text='Permisos específicos para este usuario.',
         verbose_name='user permissions',
@@ -77,58 +54,34 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     class Meta:
         db_table = 'TBL_USER'
+        managed = False
 
     def __str__(self):
         return self.email
 
-# class Deceased(models.Model):
-#     id_deceased = models.BigAutoField(primary_key=True)
-#     name = models.CharField(max_length=100)
-#     date_birth = models.DateTimeField()
-#     date_death = models.DateTimeField()
-#     description = models.CharField(max_length=100)
-#     burial_place = models.CharField(max_length=100)
-#     visualization_state = models.BooleanField()
-#     visualization_code = models.CharField(max_length=100)
-
-#     class Meta:
-#         db_table = 'TBL_DECEASED'
-#         managed = False
-
 class Deceased(models.Model):
     id_deceased = models.BigAutoField(primary_key=True)
     name = models.CharField(max_length=100)
-    date_birth = models.DateTimeField(null=True, blank=True)  # ← CAMBIO
-    date_death = models.DateTimeField(null=True, blank=True)  # ← CAMBIO
-    description = models.CharField(max_length=100, null=True, blank=True)  # ← CAMBIO
-    burial_place = models.CharField(max_length=100, null=True, blank=True)  # ← CAMBIO
-    visualization_state = models.BooleanField(default=True)  # ← CAMBIO
-    visualization_code = models.CharField(max_length=100, null=True, blank=True)  # ← CAMBIO
+    date_birth = models.DateTimeField(null=True, blank=True)
+    date_death = models.DateTimeField(null=True, blank=True)
+    description = models.CharField(max_length=100, null=True, blank=True)
+    burial_place = models.CharField(max_length=100, null=True, blank=True)
+    visualization_state = models.BooleanField()
+    visualization_code = models.CharField(max_length=100, null=True, blank=True)
 
     class Meta:
         db_table = 'TBL_DECEASED'
         managed = False
 
-# class Video(models.Model):
-#     id_video = models.BigAutoField(primary_key=True)
-#     video_link = models.CharField(max_length=1000)
-#     event_title = models.CharField(max_length=100)
-#     description = models.CharField(max_length=100)
-
-#     class Meta:
-#         db_table = 'TBL_VIDEO'
-#         managed = False
-
 class Video(models.Model):
     id_video = models.BigAutoField(primary_key=True)
     video_link = models.CharField(max_length=1000)
     event_title = models.CharField(max_length=100)
-    description = models.CharField(max_length=255)  # ← CAMBIO para igualar con appWeb
+    description = models.CharField(max_length=100)
 
     class Meta:
         db_table = 'TBL_VIDEO'
         managed = False
-
 
 class VideoMetadata(models.Model):
     id_metadata = models.BigAutoField(primary_key=True)
@@ -140,6 +93,8 @@ class VideoMetadata(models.Model):
         managed = False
 
 class DeceasedVideo(models.Model):
+    id_deceased_video = models.BigAutoField(primary_key=True)
+    id_video = models.ForeignKey(Video, on_delete=models.CASCADE, db_column='id_video')
     id_deceased = models.ForeignKey(Deceased, on_delete=models.CASCADE, db_column='id_deceased')
     id_metadata = models.ForeignKey(VideoMetadata, on_delete=models.CASCADE, db_column='id_metadata')
     video_link = models.CharField(max_length=1000)
@@ -149,21 +104,11 @@ class DeceasedVideo(models.Model):
         managed = False
         unique_together = (('id_deceased', 'id_metadata'),)
 
-# class Image(models.Model):
-#     id_image = models.BigAutoField(primary_key=True)
-#     image_link = models.CharField(max_length=1000)
-#     event_title = models.CharField(max_length=100)
-#     description = models.CharField(max_length=100)
-
-#     class Meta:
-#         db_table = 'TBL_IMAGE'
-#         managed = False
-
 class Image(models.Model):
     id_image = models.BigAutoField(primary_key=True)
     image_link = models.CharField(max_length=1000)
     event_title = models.CharField(max_length=100)
-    description = models.CharField(max_length=255)  # ← CAMBIO para igualar con appWeb
+    description = models.CharField(max_length=100)
 
     class Meta:
         db_table = 'TBL_IMAGE'
@@ -179,6 +124,8 @@ class ImageMetadata(models.Model):
         managed = False
 
 class DeceasedImage(models.Model):
+    id_deceased_image = models.BigAutoField(primary_key=True)
+    id_image = models.ForeignKey(Image, on_delete=models.CASCADE, db_column='id_image')
     id_deceased = models.ForeignKey(Deceased, on_delete=models.CASCADE, db_column='id_deceased')
     id_metadata = models.ForeignKey(ImageMetadata, on_delete=models.CASCADE, db_column='id_metadata')
     image_link = models.CharField(max_length=1000)
@@ -186,7 +133,7 @@ class DeceasedImage(models.Model):
     class Meta:
         db_table = 'TBL_DECEASED_IMAGE'
         managed = False
-        unique_together = (('id_deceased', 'id_metadata'),)
+        unique_together = (('id_image', 'id_deceased', 'id_metadata'),)
 
 class RelationshipType(models.Model):
     relationship = models.CharField(primary_key=True, max_length=100)
@@ -196,6 +143,7 @@ class RelationshipType(models.Model):
         managed = False
 
 class Relation(models.Model):
+    id_relation = models.BigAutoField(primary_key=True)
     id_deceased = models.ForeignKey(Deceased, on_delete=models.CASCADE, related_name='child', db_column='id_deceased')
     id_parent = models.ForeignKey(Deceased, on_delete=models.CASCADE, related_name='parent', db_column='id_parent')
     relationship = models.ForeignKey(RelationshipType, on_delete=models.CASCADE, db_column='relationship')
@@ -206,7 +154,8 @@ class Relation(models.Model):
         unique_together = (('id_deceased', 'id_parent'),)
 
 class UserDeceased(models.Model):
-    id_user = models.ForeignKey('User', on_delete=models.CASCADE, db_column='id_user')
+    id_user_deceased = models.BigAutoField(primary_key=True)
+    id_user = models.ForeignKey(User, on_delete=models.CASCADE, db_column='id_user')
     id_deceased = models.ForeignKey(Deceased, on_delete=models.CASCADE, db_column='id_deceased')
     date_relation = models.DateTimeField()
     has_permission = models.BooleanField()
@@ -218,8 +167,8 @@ class UserDeceased(models.Model):
 
 class Request(models.Model):
     id_request = models.BigAutoField(primary_key=True)
-    id_issuer = models.ForeignKey('User', on_delete=models.CASCADE, related_name='issued_requests', db_column='id_issuer')
-    id_receiver = models.ForeignKey('User', on_delete=models.CASCADE, related_name='received_requests', db_column='id_receiver')
+    id_issuer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='issued_requests', db_column='id_issuer')
+    id_receiver = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_requests', db_column='id_receiver')
     id_deceased = models.ForeignKey(Deceased, on_delete=models.CASCADE, db_column='id_deceased')
     creation_date = models.DateField()
     request_type = models.CharField(max_length=50)
@@ -231,8 +180,8 @@ class Request(models.Model):
 
 class Notification(models.Model):
     id_notification = models.BigAutoField(primary_key=True)
-    id_sender = models.ForeignKey('User', on_delete=models.CASCADE, related_name='sent_notifications', db_column='id_sender')
-    id_receiver = models.ForeignKey('User', on_delete=models.CASCADE, related_name='received_notifications', db_column='id_receiver')
+    id_sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_notifications', db_column='id_sender')
+    id_receiver = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_notifications', db_column='id_receiver')
     message = models.CharField(max_length=1000)
     is_read = models.BooleanField(default=False)
     creation_date = models.DateTimeField()
@@ -243,7 +192,7 @@ class Notification(models.Model):
 
 class QR(models.Model):
     id_qr = models.BigAutoField(primary_key=True)
-    id_user = models.ForeignKey('User', on_delete=models.CASCADE, db_column='id_user')
+    id_user = models.ForeignKey(User, on_delete=models.CASCADE, db_column='id_user')
     qr_code = models.BigIntegerField(unique=True)
     visualization_status = models.CharField(max_length=50)
     generation_date = models.DateTimeField()

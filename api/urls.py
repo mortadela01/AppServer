@@ -1,5 +1,7 @@
 from django.urls import path
 from . import views  # Importa las vistas de tu app
+from .views import UserIdByQrCodeView, DeceasedByUserView, ImagesByDeceasedView, VideosByDeceasedView, RelationsByDeceasedView
+
 
 urlpatterns = [
     # User
@@ -58,4 +60,11 @@ urlpatterns = [
 
     # Google AUTH
     path('auth/google/', views.google_login, name='google_login'),
+
+    # APP VR
+    path('vr/user-id-by-qr/<int:qr_code>/', UserIdByQrCodeView.as_view(), name='user_id_by_qr'),
+    path('vr/deceased-by-user/<int:user_id>/', DeceasedByUserView.as_view(), name='deceased_by_user'),
+    path('vr/images-by-deceased/<int:deceased_id>/', ImagesByDeceasedView.as_view(), name='images_by_deceased'),
+    path('vr/videos-by-deceased/<int:deceased_id>/', VideosByDeceasedView.as_view(), name='videos_by_deceased'),
+    path('vr/relations-by-deceased/<int:deceased_id>/', RelationsByDeceasedView.as_view(), name='relations_by_deceased'),
 ]
