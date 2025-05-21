@@ -62,13 +62,17 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'api.middleware.LogRequestBodyMiddleware',
+    'api.middleware.TokenDebugMiddleware',
+    # ... otras middlewares
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    # 'django.middleware.csrf.CsrfViewMiddleware',  # <-- comenta esto
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'social_django.middleware.SocialAuthExceptionMiddleware',
 ]
 
 REST_FRAMEWORK = {
@@ -76,7 +80,8 @@ REST_FRAMEWORK = {
         'oauth2_provider.contrib.rest_framework.OAuth2Authentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
+        # 'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.AllowAny',
     ),
 }
 
@@ -110,7 +115,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'vr_mausoleum',
         'USER': 'root',  # Usualmente 'root' en desarrollo
-        'PASSWORD': '1234',
+        'PASSWORD': 'root',
         'HOST': 'localhost',  # O la IP de tu servidor MySQL
         'PORT': '3306',
     }
@@ -147,20 +152,6 @@ OAUTH2_PROVIDER = {
     'OAUTH2_VALIDATOR_CLASS': 'api.oauth_validators.MyOAuth2Validator',
 }
 
-
-MIDDLEWARE = [
-    'api.middleware.LogRequestBodyMiddleware',
-    'api.middleware.TokenDebugMiddleware',
-    # ... otras middlewares
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    # 'django.middleware.csrf.CsrfViewMiddleware',  <-- comenta esto
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'social_django.middleware.SocialAuthExceptionMiddleware',
-]
 
 # DEBUG para solventar problemas de autorización
 
