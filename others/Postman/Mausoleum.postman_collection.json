@@ -2109,6 +2109,373 @@
 					"response": []
 				}
 			]
+		},
+		{
+			"name": "APP WEB",
+			"item": [
+				{
+					"name": "Dashboard",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "3cZpkLt4o9Vkx0kEEUWZAxICr1v7Lq",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8000/api/appweb/dashboard/",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8000",
+							"path": [
+								"api",
+								"appweb",
+								"dashboard",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Familiy Members",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "3cZpkLt4o9Vkx0kEEUWZAxICr1v7Lq",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8000/api/appweb/family-members/",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8000",
+							"path": [
+								"api",
+								"appweb",
+								"family-members",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add Family Member",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "3cZpkLt4o9Vkx0kEEUWZAxICr1v7Lq",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"name\": \"Juan Perez\",\r\n  \"date_birth\": \"1945-01-01T00:00:00Z\",\r\n  \"date_death\": \"2020-12-01T00:00:00Z\",\r\n  \"description\": \"Biografía breve aquí\",\r\n  \"burial_place\": \"Cementerio Central\",\r\n  \"visualization_state\": true,\r\n  \"visualization_code\": \"ABC123\",\r\n  \"related_deceased\": [1, 2],\r\n  \"relationship_type\": [\"parent\", \"sibling\"]\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8000/api/appweb/family-members/add/",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8000",
+							"path": [
+								"api",
+								"appweb",
+								"family-members",
+								"add",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Share Family Members",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "3cZpkLt4o9Vkx0kEEUWZAxICr1v7Lq",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"email\": \"lalo@gmail.com\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8000/api/appweb/family-members/5/share/",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8000",
+							"path": [
+								"api",
+								"appweb",
+								"family-members",
+								"5",
+								"share",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Family Member",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "3cZpkLt4o9Vkx0kEEUWZAxICr1v7Lq",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8000/api/appweb/family-members/20/delete/",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8000",
+							"path": [
+								"api",
+								"appweb",
+								"family-members",
+								"20",
+								"delete",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Solicitar Fallecido",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "3cZpkLt4o9Vkx0kEEUWZAxICr1v7Lq",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8000/api/appweb/request-access/10/",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8000",
+							"path": [
+								"api",
+								"appweb",
+								"request-access",
+								"10",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Rechazar/Aceptar Solicitud",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "3cZpkLt4o9Vkx0kEEUWZAxICr1v7Lq",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8000/api/appweb/approve-request/1/aproved/",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8000",
+							"path": [
+								"api",
+								"appweb",
+								"approve-request",
+								"1",
+								"aproved",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Marcar Notificaciones Como Leídas",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "3cZpkLt4o9Vkx0kEEUWZAxICr1v7Lq",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "[\r\n    {\r\n        \"id_notification\": 12,\r\n        \"id_sender\": 3,\r\n        \"message\": \"Juan ha solicitado acceso...\",\r\n        \"is_read\": true,\r\n        \"creation_date\": \"2025-05-19T10:00:00Z\"\r\n  }\r\n]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8000/api/appweb/notifications/",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8000",
+							"path": [
+								"api",
+								"appweb",
+								"notifications",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Marcar 1 Notificación",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "3cZpkLt4o9Vkx0kEEUWZAxICr1v7Lq",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8000/api/appweb/notifications/read/1/",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8000",
+							"path": [
+								"api",
+								"appweb",
+								"notifications",
+								"read",
+								"1",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "AceptarDenegarLeer Notificacion",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "3cZpkLt4o9Vkx0kEEUWZAxICr1v7Lq",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8000/api/appweb/notification-action/12/decline/",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8000",
+							"path": [
+								"api",
+								"appweb",
+								"notification-action",
+								"12",
+								"decline",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
 		}
 	]
 }

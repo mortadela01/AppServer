@@ -15,6 +15,65 @@ from oauth2_provider.models import AccessToken, Application, RefreshToken
 from django.utils import timezone
 from datetime import timedelta
 
+
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.db import connection, transaction
+from .serializers import DeceasedSerializer, RelationSerializer, UserDeceasedSerializer
+from .models import User, Deceased
+import re
+from django.contrib.auth import authenticate
+
+
+@method_decorator(csrf_exempt, name='dispatch')  # Para evitar problemas con CSRF en login
+class OAuth2PasswordLoginView(APIView):
+    permission_classes = []  # Sin restricciones para login
+
+    def post(self, request):
+        email = request.data.get('email')
+        password = request.data.get('password')
+
+        if not email or not password:
+            return Response({"error": "Email and password are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = authenticate(request, username=email, password=password)
+        if user is None:
+            return Response({"error": "Invalid credentials."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        try:
+            app = Application.objects.get(name='Mausoleum API')
+        except Application.DoesNotExist:
+            return Response({'error': 'OAuth application not found'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        expires = timezone.now() + timedelta(seconds=36000)
+        access_token_str = generate_token()
+        refresh_token_str = generate_token()
+
+        access_token = AccessToken.objects.create(
+            user=user,
+            application=app,
+            token=access_token_str,
+            expires=expires,
+            scope='read write'
+        )
+        refresh_token = RefreshToken.objects.create(
+            user=user,
+            token=refresh_token_str,
+            application=app,
+            access_token=access_token
+        )
+
+        return Response({
+            'access_token': access_token.token,
+            'expires_in': 36000,
+            'refresh_token': refresh_token.token,
+            'token_type': 'Bearer',
+            'scope': 'read write'
+        })
+
 # User CRUD
 class UserListCreate(generics.ListCreateAPIView):
     queryset = User.objects.all()
@@ -381,3 +440,416 @@ def google_login(request):
         'token_type': 'Bearer',
         'scope': 'read write'
     })
+
+
+# ----------------------- APP WEB
+
+class DashboardView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        notifications = []
+        unread_count = 0
+
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT * FROM TBL_NOTIFICATION WHERE id_receiver = %s ORDER BY creation_date DESC
+            """, [user.id_user])
+            columns = [col[0] for col in cursor.description]
+            for row in cursor.fetchall():
+                notif = dict(zip(columns, row))
+                match = re.search(r"Request #(\d+)", notif.get("message", ""))
+                if match:
+                    notif["request_id"] = match.group(1)
+                notifications.append(notif)
+
+            cursor.execute("""
+                SELECT COUNT(*) FROM TBL_NOTIFICATION WHERE id_receiver = %s AND is_read = 0
+            """, [user.id_user])
+            unread_count = cursor.fetchone()[0]
+
+        user_data = {
+            "id_user": user.id_user,
+            "name": user.name,
+            "email": user.email,
+        }
+
+        return Response({
+            "user": user_data,
+            "notifications": notifications,
+            "unread_count": unread_count
+        })
+
+
+class AddFamilyMemberView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    @transaction.atomic
+    def post(self, request):
+        data = request.data.copy()
+
+        # Guardar información básica de fallecido
+        serializer = DeceasedSerializer(data=data)
+        if serializer.is_valid():
+            new_deceased = serializer.save()
+
+            # Guardar relaciones familiares
+            related = data.get('related_deceased', [])
+            relationship_types = data.get('relationship_type', [])
+            if related and relationship_types and len(related) == len(relationship_types):
+                with connection.cursor() as cursor:
+                    for related_id, rel_type in zip(related, relationship_types):
+                        cursor.execute("""
+                            INSERT INTO TBL_RELATION (id_deceased, id_parent, relationship)
+                            VALUES (%s, %s, %s)
+                        """, [new_deceased.id_deceased, int(related_id), rel_type])
+
+            # Crear relación usuario-fallecido con permiso
+            user = request.user
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    INSERT INTO TBL_USER_DECEASED (id_user, id_deceased, date_relation, has_permission)
+                    VALUES (%s, %s, %s, %s)
+                """, [user.id_user, new_deceased.id_deceased, timezone.now(), 1])
+
+            # NOTA: Aquí no se manejan archivos multimedia (imágenes/videos) porque esa lógica es más compleja vía API
+            # Se recomienda crear endpoints separados para upload de imágenes y videos vinculados.
+
+            return Response(DeceasedSerializer(new_deceased).data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class FamilyMemberListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        miembros = []
+        permisos = []
+        otros_deceased = []
+
+        with connection.cursor() as cursor:
+            # Obtener fallecidos relacionados al usuario
+            cursor.execute("""
+                SELECT d.id_deceased, d.name, d.date_birth, d.date_death, d.burial_place, ud.has_permission 
+                FROM TBL_DECEASED d
+                INNER JOIN TBL_USER_DECEASED ud ON d.id_deceased = ud.id_deceased
+                WHERE ud.id_user = %s
+            """, [user.id_user])
+            columns = [col[0] for col in cursor.description]
+            for row in cursor.fetchall():
+                miembro = dict(zip(columns, row))
+                permisos.append(miembro['has_permission'])
+                miembros.append(miembro)
+
+            # Obtener otros fallecidos no relacionados
+            cursor.execute("""
+                SELECT * FROM TBL_DECEASED
+                WHERE id_deceased NOT IN (
+                    SELECT id_deceased FROM TBL_USER_DECEASED WHERE id_user = %s
+                )
+            """, [user.id_user])
+            otros_deceased = [dict(zip([col[0] for col in cursor.description], row)) for row in cursor.fetchall()]
+
+        return Response({
+            "miembros": miembros,
+            "permisos": permisos,
+            "otros_deceased": otros_deceased,
+        })
+
+
+class ShareFamilyMemberView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, id):
+        email = request.data.get('email')
+        if not email:
+            return Response({"email": "This field is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        shared_user = User.objects.filter(email=email).first()
+        sender = request.user
+
+        if not shared_user:
+            return Response({"email": "User with this email does not exist."}, status=status.HTTP_400_BAD_REQUEST)
+
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO TBL_NOTIFICATION (id_sender, id_receiver, message, is_read, creation_date)
+                VALUES (%s, %s, %s, %s, %s)
+            """, [
+                sender.id_user,
+                shared_user.id_user,
+                f"{sender.name} has shared memory ID {id} with you. Do you approve?",
+                0,
+                timezone.now()
+            ])
+
+        return Response({"detail": "Memory shared successfully."}, status=status.HTTP_200_OK)
+
+
+class EditFamilyMemberView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    @transaction.atomic
+    def put(self, request, id):
+        try:
+            miembro = Deceased.objects.get(id_deceased=id)
+        except Deceased.DoesNotExist:
+            return Response({"detail": "Deceased not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        user = request.user
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT has_permission FROM TBL_USER_DECEASED
+                WHERE id_user = %s AND id_deceased = %s
+            """, [user.id_user, id])
+            perm = cursor.fetchone()
+            if not perm:
+                return Response({"detail": "No permission to edit this deceased."}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = DeceasedSerializer(miembro, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+
+            related_ids = request.data.get('related_deceased', [])
+            relationship_types = request.data.get('relationship_type', [])
+            deleted_relation_ids = request.data.get('deleted_relation_ids', [])
+
+            with connection.cursor() as cursor:
+                # Delete relations marked for removal
+                for del_id in deleted_relation_ids:
+                    cursor.execute("""
+                        DELETE FROM TBL_RELATION WHERE id_deceased = %s AND id_parent = %s
+                    """, [id, del_id])
+
+                # Insert new relations if not exist
+                cursor.execute("SELECT id_parent FROM TBL_RELATION WHERE id_deceased = %s", [id])
+                existing_ids = set(row[0] for row in cursor.fetchall())
+                for related_id, rel_type in zip(related_ids, relationship_types):
+                    if related_id and rel_type and int(related_id) not in existing_ids:
+                        cursor.execute("""
+                            INSERT INTO TBL_RELATION (id_deceased, id_parent, relationship)
+                            VALUES (%s, %s, %s)
+                        """, [id, int(related_id), rel_type])
+
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class DeleteFamilyMemberView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    @transaction.atomic
+    def delete(self, request, id):
+        try:
+            miembro = Deceased.objects.get(id_deceased=id)
+        except Deceased.DoesNotExist:
+            return Response({"detail": "Deceased not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        with connection.cursor() as cursor:
+            cursor.execute("DELETE FROM TBL_RELATION WHERE id_deceased = %s OR id_parent = %s", [id, id])
+
+            cursor.execute("SELECT id_metadata FROM TBL_DECEASED_VIDEO WHERE id_deceased = %s", [id])
+            video_metadata_ids = [row[0] for row in cursor.fetchall()]
+            cursor.execute("DELETE FROM TBL_DECEASED_VIDEO WHERE id_deceased = %s", [id])
+            for meta_id in video_metadata_ids:
+                cursor.execute("DELETE FROM TBL_VIDEO WHERE id_video = %s", [meta_id])
+                cursor.execute("DELETE FROM TBL_VIDEO_METADATA WHERE id_metadata = %s", [meta_id])
+
+            cursor.execute("SELECT id_metadata FROM TBL_DECEASED_IMAGE WHERE id_deceased = %s", [id])
+            image_metadata_ids = [row[0] for row in cursor.fetchall()]
+            cursor.execute("DELETE FROM TBL_DECEASED_IMAGE WHERE id_deceased = %s", [id])
+            for meta_id in image_metadata_ids:
+                cursor.execute("DELETE FROM TBL_IMAGE WHERE id_image = %s", [meta_id])
+                cursor.execute("DELETE FROM TBL_IMAGE_METADATA WHERE id_metadata = %s", [meta_id])
+
+            cursor.execute("DELETE FROM TBL_USER_DECEASED WHERE id_deceased = %s", [id])
+            cursor.execute("DELETE FROM TBL_REQUEST WHERE id_deceased = %s", [id])
+            cursor.execute("DELETE FROM TBL_DECEASED WHERE id_deceased = %s", [id])
+
+        return Response({"detail": "Deceased deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+
+
+# Puedes crear más vistas para request_access, approve_request, notifications, etc. siguiendo el mismo patrón de APIView con JSON y serializers.
+
+class RequestAccessView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    @transaction.atomic
+    def post(self, request, id_deceased):
+        user = request.user
+
+        with connection.cursor() as cursor:
+            # Verificar si ya hay solicitud pendiente del mismo usuario y fallecido
+            cursor.execute("""
+                SELECT COUNT(*) FROM TBL_REQUEST
+                WHERE id_issuer = %s AND id_deceased = %s AND request_status = 'pending'
+            """, [user.id_user, id_deceased])
+            if cursor.fetchone()[0] > 0:
+                return Response({"detail": "You already have a pending request for this deceased."},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+            # Obtener creador (usuario con permiso) del fallecido
+            cursor.execute("""
+                SELECT id_user FROM TBL_USER_DECEASED
+                WHERE id_deceased = %s AND has_permission = 1 LIMIT 1
+            """, [id_deceased])
+            creator = cursor.fetchone()
+            if not creator:
+                return Response({"detail": "No creator with permission found for this deceased."},
+                                status=status.HTTP_404_NOT_FOUND)
+            creator_id = creator[0]
+
+            # Insertar solicitud
+            cursor.execute("""
+                INSERT INTO TBL_REQUEST (id_issuer, id_receiver, id_deceased, creation_date, request_type, request_status)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, [user.id_user, creator_id, id_deceased, timezone.now(), 'view', 'pending'])
+            request_id = cursor.lastrowid
+
+            # Insertar notificación al creador
+            cursor.execute("""
+                INSERT INTO TBL_NOTIFICATION (id_sender, id_receiver, message, creation_date, is_read)
+                VALUES (%s, %s, %s, %s, %s)
+            """, [user.id_user, creator_id, f"{user.name} has requested access. Request #{request_id}", timezone.now(), False])
+
+        return Response({"detail": "Access request created successfully."}, status=status.HTTP_201_CREATED)
+
+
+class ApproveRequestView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    @transaction.atomic
+    def post(self, request, request_id, action):
+        # action esperado: "approved" o "rejected"
+        if action not in ['approved', 'rejected']:
+            return Response({"detail": "Invalid action."}, status=status.HTTP_400_BAD_REQUEST)
+
+        approver = request.user
+
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT id_issuer, id_deceased FROM TBL_REQUEST WHERE id_request = %s
+            """, [request_id])
+            row = cursor.fetchone()
+            if not row:
+                return Response({"detail": "Request not found."}, status=status.HTTP_404_NOT_FOUND)
+
+            requester_id, deceased_id = row
+
+            # Actualizar estado de la solicitud
+            cursor.execute("""
+                UPDATE TBL_REQUEST SET request_status = %s WHERE id_request = %s
+            """, [action, request_id])
+
+            if action == 'approved':
+                # Borrar permisos duplicados si existen
+                cursor.execute("""
+                    DELETE FROM TBL_USER_DECEASED WHERE id_user = %s AND id_deceased = %s
+                """, [requester_id, deceased_id])
+
+                # Insertar permiso con has_permission=0 (solo vista)
+                cursor.execute("""
+                    INSERT INTO TBL_USER_DECEASED (id_user, id_deceased, date_relation, has_permission)
+                    VALUES (%s, %s, %s, %s)
+                """, [requester_id, deceased_id, timezone.now(), False])
+
+                message = f"✅ Your request to access memory ID {deceased_id} was approved."
+            else:
+                message = f"❌ Your request to access memory ID {deceased_id} was rejected."
+
+            # Insertar notificación al solicitante
+            cursor.execute("""
+                INSERT INTO TBL_NOTIFICATION (id_sender, id_receiver, message, creation_date, is_read)
+                VALUES (%s, %s, %s, %s, %s)
+            """, [approver.id_user, requester_id, message, timezone.now(), False])
+
+        return Response({"detail": f"Request {action} successfully."}, status=status.HTTP_200_OK)
+
+
+class NotificationsListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        notifications = []
+        with connection.cursor() as cursor:
+            # Marcar todas como leídas (opcional, o usar endpoint separado)
+            cursor.execute("""
+                UPDATE TBL_NOTIFICATION SET is_read = 1 WHERE id_receiver = %s
+            """, [user.id_user])
+
+            # Obtener todas las notificaciones del usuario
+            cursor.execute("""
+                SELECT id_notification, id_sender, message, is_read, creation_date
+                FROM TBL_NOTIFICATION
+                WHERE id_receiver = %s
+                ORDER BY creation_date DESC
+            """, [user.id_user])
+
+            columns = [col[0] for col in cursor.description]
+            for row in cursor.fetchall():
+                notifications.append(dict(zip(columns, row)))
+
+        return Response(notifications)
+
+
+class MarkNotificationReadView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, notification_id):
+        user = request.user
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                UPDATE TBL_NOTIFICATION SET is_read = 1
+                WHERE id_notification = %s AND id_receiver = %s
+            """, [notification_id, user.id_user])
+            if cursor.rowcount == 0:
+                return Response({"detail": "Notification not found or no permission."}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": "Notification marked as read."}, status=status.HTTP_200_OK)
+
+
+class HandleNotificationActionView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    @transaction.atomic
+    def post(self, request, notification_id, action):
+        # action puede ser: "accept", "decline", "read"
+        user = request.user
+
+        if action not in ['accept', 'decline', 'read']:
+            return Response({"detail": "Invalid action."}, status=status.HTTP_400_BAD_REQUEST)
+
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT id_sender, message FROM TBL_NOTIFICATION
+                WHERE id_notification = %s AND id_receiver = %s
+            """, [notification_id, user.id_user])
+            notif = cursor.fetchone()
+
+            if not notif:
+                return Response({"detail": "Notification not found or no permission."}, status=status.HTTP_404_NOT_FOUND)
+
+            sender_id, message = notif
+            match = re.search(r"memory ID (\d+)", message)
+
+            if match:
+                id_deceased = int(match.group(1))
+
+                if action == 'accept':
+                    # Insertar permiso con has_permission=0 (solo vista)
+                    cursor.execute("""
+                        INSERT IGNORE INTO TBL_USER_DECEASED (id_user, id_deceased, date_relation, has_permission)
+                        VALUES (%s, %s, %s, %s)
+                    """, [user.id_user, id_deceased, timezone.now(), False])
+                # Para decline o read no se inserta permiso
+
+            # Marcar la notificación como leída siempre
+            cursor.execute("""
+                UPDATE TBL_NOTIFICATION SET is_read = 1 WHERE id_notification = %s
+            """, [notification_id])
+
+        return Response({"detail": f"Notification action '{action}' handled."}, status=status.HTTP_200_OK)
