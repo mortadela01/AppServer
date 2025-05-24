@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views  # Importa las vistas de tu app                                                                            ||||                                                                                                                           ||||                                   ||||                                                                           ||||
-from .views import UserIdByQrCodeView, DeceasedByUserView, ImagesByDeceasedView, VideosByDeceasedView, RelationsByDeceasedView, DashboardView, AddFamilyMemberView, FamilyMemberListView, ShareFamilyMemberView, EditFamilyMemberView, DeleteFamilyMemberView, RequestAccessView, ApproveRequestView, NotificationsListView, MarkNotificationReadView, HandleNotificationActionView, OAuth2PasswordLoginView
+from .views import UserIdByQrCodeView, DeceasedByUserView, ImagesByDeceasedView, VideosByDeceasedView, RelationsByDeceasedView, DashboardView, AddFamilyMemberView, FamilyMemberListView, ShareFamilyMemberView, EditFamilyMemberView, DeleteFamilyMemberView, RequestAccessView, ApproveRequestView, NotificationsListView, MarkNotificationReadView, HandleNotificationActionView, OAuth2PasswordLoginView, DeceasedSearchView, UploadImageView, UploadVideoView, UserByEmailView
 
 
 urlpatterns = [
@@ -83,4 +83,14 @@ urlpatterns = [
     path('appweb/notifications/', NotificationsListView.as_view(), name='appweb_notifications'),
     path('appweb/notifications/read/<int:notification_id>/', MarkNotificationReadView.as_view(), name='appweb_mark_notification_read'),
     path('appweb/notification-action/<int:notification_id>/<str:action>/', HandleNotificationActionView.as_view(), name='appweb_handle_notification_action'),
+
+    # Búsqueda AJAX
+    path('deceased/search/', DeceasedSearchView.as_view(), name='deceased_search'),
+
+    # Upload Image & Video
+    path('upload/image/', UploadImageView.as_view(), name='upload_image'),
+    path('upload/video/', UploadVideoView.as_view(), name='upload_video'),
+
+    # Email Filter
+    path('users/by-email/', UserByEmailView.as_view(), name='user_by_email'),
 ]

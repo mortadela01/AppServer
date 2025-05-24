@@ -27,6 +27,10 @@ from .models import User, Deceased
 import re
 from django.contrib.auth import authenticate
 
+from django.core.files.storage import FileSystemStorage
+import os
+from django.conf import settings
+
 
 @method_decorator(csrf_exempt, name='dispatch')  # Para evitar problemas con CSRF en login
 class OAuth2PasswordLoginView(APIView):
@@ -89,6 +93,81 @@ class UserListCreate(generics.ListCreateAPIView):
 class UserRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
+
+# views.py (appServer)
+
+# class UserByEmailView(APIView):
+#     permission_classes = []  # O protección según convenga
+
+#     def get(self, request):
+#         email = request.GET.get('email')
+#         if not email:
+#             return Response({'error': 'Email parameter is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+#         User = get_user_model()
+#         try:
+#             user = User.objects.get(email=email)
+#             return Response({
+#                 'id_user': user.id_user,
+#                 'name': user.name,
+#                 'email': user.email,
+#             }, status=status.HTTP_200_OK)
+#         except User.DoesNotExist:
+#             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+class UserByEmailView(APIView):
+    permission_classes = []  # Opcional protección
+
+    def get(self, request):
+        email = request.GET.get('email')
+        if not email:
+            return Response({'error': 'Email parameter is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        User = get_user_model()
+        try:
+            user = User.objects.get(email=email)
+
+            # Obtener la aplicación OAuth
+            try:
+                app = Application.objects.get(name='Mausoleum API')
+            except Application.DoesNotExist:
+                return Response({'error': 'OAuth application not found'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            # Eliminar tokens previos para evitar acumulación (opcional)
+            AccessToken.objects.filter(user=user, application=app).delete()
+            RefreshToken.objects.filter(user=user, application=app).delete()
+
+            expires = timezone.now() + timedelta(seconds=36000)
+            access_token_str = generate_token()
+            refresh_token_str = generate_token()
+
+            access_token = AccessToken.objects.create(
+                user=user,
+                application=app,
+                token=access_token_str,
+                expires=expires,
+                scope='read write'
+            )
+            refresh_token = RefreshToken.objects.create(
+                user=user,
+                token=refresh_token_str,
+                application=app,
+                access_token=access_token
+            )
+
+            return Response({
+                'id_user': user.id_user,
+                'name': user.name,
+                'email': user.email,
+                'access_token': access_token.token,
+                'expires_in': 36000,
+                'refresh_token': refresh_token.token,
+                'token_type': 'Bearer',
+                'scope': 'read write',
+            }, status=status.HTTP_200_OK)
+            
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
 # Deceased CRUD
 
@@ -853,3 +932,98 @@ class HandleNotificationActionView(APIView):
             """, [notification_id])
 
         return Response({"detail": f"Notification action '{action}' handled."}, status=status.HTTP_200_OK)
+
+class DeceasedSearchView(APIView):
+    def get(self, request):
+        query = request.GET.get('q', '').strip()
+        results = []
+        if query:
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT id_deceased, name FROM TBL_DECEASED
+                    WHERE LOWER(name) LIKE %s
+                    LIMIT 10
+                """, [f"%{query.lower()}%"])
+                rows = cursor.fetchall()
+                for row in rows:
+                    results.append({'id': row[0], 'name': row[1]})
+        return Response({'results': results})
+
+
+class UploadImageView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        image_file = request.FILES.get('image_file')
+        event_title = request.data.get('event_title', '')
+        description = request.data.get('description', '')
+        id_deceased = request.data.get('id_deceased')
+
+        if not image_file or not id_deceased:
+            return Response({'error': 'Missing image file or deceased ID'}, status=status.HTTP_400_BAD_REQUEST)
+
+        fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, 'uploads', 'images'))
+        filename = fs.save(image_file.name, image_file)
+        uploaded_file_url = fs.url(filename)
+
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO TBL_IMAGE_METADATA (date_created, coordinates)
+                VALUES (%s, %s)
+            """, [timezone.now(), ''])
+            metadata_id = cursor.lastrowid
+
+            cursor.execute("""
+                INSERT INTO TBL_DECEASED_IMAGE (id_deceased, id_metadata, image_link)
+                VALUES (%s, %s, %s)
+            """, [id_deceased, metadata_id, uploaded_file_url])
+
+            cursor.execute("""
+                INSERT INTO TBL_IMAGE (id_image, image_link, event_title, description)
+                VALUES (%s, %s, %s, %s)
+            """, [metadata_id, uploaded_file_url, event_title, description])
+
+        return Response({
+            'message': 'Image uploaded successfully',
+            'image_link': uploaded_file_url,
+            'id_metadata': metadata_id,
+        }, status=status.HTTP_201_CREATED)
+
+class UploadVideoView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        video_file = request.FILES.get('video_file')
+        event_title = request.data.get('event_title', '')
+        description = request.data.get('description', '')
+        id_deceased = request.data.get('id_deceased')
+
+        if not video_file or not id_deceased:
+            return Response({'error': 'Missing video file or deceased ID'}, status=status.HTTP_400_BAD_REQUEST)
+
+        fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, 'uploads', 'videos'))
+        filename = fs.save(video_file.name, video_file)
+        uploaded_file_url = fs.url(filename)
+
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO TBL_VIDEO_METADATA (date_created, coordinates)
+                VALUES (%s, %s)
+            """, [timezone.now(), ''])
+            metadata_id = cursor.lastrowid
+
+            cursor.execute("""
+                INSERT INTO TBL_DECEASED_VIDEO (id_deceased, id_metadata, video_link)
+                VALUES (%s, %s, %s)
+            """, [id_deceased, metadata_id, uploaded_file_url])
+
+            cursor.execute("""
+                INSERT INTO TBL_VIDEO (id_video, video_link, event_title, description)
+                VALUES (%s, %s, %s, %s)
+            """, [metadata_id, uploaded_file_url, event_title, description])
+
+        return Response({
+            'message': 'Video uploaded successfully',
+            'video_link': uploaded_file_url,
+            'id_metadata': metadata_id,
+        }, status=status.HTTP_201_CREATED)
