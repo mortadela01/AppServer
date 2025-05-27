@@ -62,6 +62,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'api.middleware.TokenValidationMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -110,7 +111,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'vr_mausoleum',
         'USER': 'root',  # Usualmente 'root' en desarrollo
-        'PASSWORD': '1234',
+        'PASSWORD': 'root',
         'HOST': 'localhost',  # O la IP de tu servidor MySQL
         'PORT': '3306',
     }

@@ -563,10 +563,16 @@ class DashboardView(APIView):
 
 class AddFamilyMemberView(APIView):
     permission_classes = [permissions.IsAuthenticated]
-
+        
     @transaction.atomic
     def post(self, request):
+        # Verificar que el token esté presente y sea válido
+        token = request.headers.get('Authorization', None)
+        if token:
+            print(f"Token recibido: {token}")
+
         data = request.data.copy()
+        print("DEBUG - AddFamilyMemberView data received:", data)
 
         # Guardar información básica de fallecido
         serializer = DeceasedSerializer(data=data)
@@ -597,6 +603,7 @@ class AddFamilyMemberView(APIView):
 
             return Response(DeceasedSerializer(new_deceased).data, status=status.HTTP_201_CREATED)
         else:
+            print("DEBUG - serializer errors:", serializer.errors)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

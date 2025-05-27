@@ -62,16 +62,20 @@ class User(AbstractBaseUser, PermissionsMixin):
 class Deceased(models.Model):
     id_deceased = models.BigAutoField(primary_key=True)
     name = models.CharField(max_length=100)
-    date_birth = models.DateTimeField(null=True, blank=True)
-    date_death = models.DateTimeField(null=True, blank=True)
-    description = models.CharField(max_length=100, null=True, blank=True)
+    date_birth = models.DateField(null=True, blank=True)
+    date_death = models.DateField(null=True, blank=True)
+    description = models.TextField(null=True, blank=True)
     burial_place = models.CharField(max_length=100, null=True, blank=True)
-    visualization_state = models.BooleanField()
+    visualization_state = models.BooleanField(default=True)
     visualization_code = models.CharField(max_length=100, null=True, blank=True)
 
     class Meta:
         db_table = 'TBL_DECEASED'
         managed = False
+
+    def __str__(self):
+        return self.name
+
 
 class Video(models.Model):
     id_video = models.BigAutoField(primary_key=True)

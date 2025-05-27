@@ -32,7 +32,12 @@ class UserSerializer(serializers.ModelSerializer):
 class DeceasedSerializer(serializers.ModelSerializer):
     class Meta:
         model = Deceased
-        fields = '__all__'
+        fields = [
+            'id_deceased', 'name', 'date_birth', 'date_death',
+            'description', 'burial_place', 'visualization_state',
+            'visualization_code'
+        ]
+
 
 class VideoSerializer(serializers.ModelSerializer): 
     class Meta:
