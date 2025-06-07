@@ -1,0 +1,25 @@
+pip install virtualenv
+virtualenv env
+pip install -r requirements.txt
+python manage.py makemigrations
+python manage.py migrate
+python manage.py createsuperuser
+
+admin@gmail.com
+admin
+
+python manage.py runserver 8080
+
+Applications -> add
+
+user: id_admin en base de datos
+client type: confidential
+Autorization grant type: resource owner password-bassed
+name: Mausoleum API
+skip autorization
+
+secret1 id client: 8eNM7QpuCb5CIj4xpH7jbufII5qT5p8i2ux2TqO0
+secret2 secret client: kb4B7ohrfTGF2SsQUy9zujzYSHrck8dPDXyB9hT5NSGT1r3sObENR2OmHqZ3HS2GWbtnSNEW8Gq51fSkrLm4GniPJbI3OhwKnESxoXZFeWNNzjY95QIh9HIu3ig6iU17
+
+SAVE
+

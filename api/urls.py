@@ -1,63 +1,84 @@
 from django.urls import path
-from . import views  # Importa las vistas de tu app                                                                            ||||                                                                                                                           ||||                                   ||||                                                                           ||||
-from .views import UserIdByQrCodeView, DeceasedByUserView, ImagesByDeceasedView, VideosByDeceasedView, RelationsByDeceasedView, DashboardView, AddFamilyMemberView, FamilyMemberListView, ShareFamilyMemberView, EditFamilyMemberView, DeleteFamilyMemberView, RequestAccessView, ApproveRequestView, NotificationsListView, MarkNotificationReadView, HandleNotificationActionView, OAuth2PasswordLoginView, DeceasedSearchView, UploadImageView, UploadVideoView, UserByEmailView
-
+from . import views
+from .views import (
+    UserIdByQrCodeView, 
+    DeceasedByUserView, 
+    ImagesByDeceasedView, 
+    VideosByDeceasedView, 
+    RelationsByDeceasedView, 
+    DashboardView, 
+    AddFamilyMemberView, 
+    FamilyMemberListView, 
+    ShareFamilyMemberView, 
+    EditFamilyMemberView, 
+    DeleteFamilyMemberView, 
+    RequestAccessView, 
+    ApproveRequestView, 
+    NotificationsListView, 
+    MarkNotificationReadView, 
+    HandleNotificationActionView, 
+    OAuth2PasswordLoginView, 
+    DeceasedSearchView, 
+    UploadImageView, 
+    UploadVideoView, 
+    UserByEmailView
+)
 
 urlpatterns = [
     # User
-    path('users/', views.UserListCreate.as_view()),
-    path('users/<int:pk>/', views.UserRetrieveUpdateDestroy.as_view()),
+    path('users/', views.UserListCreate.as_view(), name="user_list_create"),
+    path('users/<int:pk>/', views.UserRetrieveUpdateDestroy.as_view(), name="user_detail"),
     path('auth/login/', OAuth2PasswordLoginView.as_view(), name='oauth2_password_login'),
     
     # Deceased
-    path('deceased/', views.DeceasedListCreate.as_view()),
-    path('deceased/<int:pk>/', views.DeceasedRetrieveUpdateDestroy.as_view()),
+    path('deceased/', views.DeceasedListCreate.as_view(), name="deceased_list_create"),
+    path('deceased/<int:pk>/', views.DeceasedRetrieveUpdateDestroy.as_view(), name="deceased_detail"),
     
     # Video
-    path('videos/', views.VideoListCreate.as_view()),
-    path('videos/<int:pk>/', views.VideoRetrieveUpdateDestroy.as_view()),
+    path('videos/', views.VideoListCreate.as_view(), name="video_list_create"),
+    path('videos/<int:pk>/', views.VideoRetrieveUpdateDestroy.as_view(), name="video_detail"),
     
     # Video Metadata
-    path('video-metadata/', views.VideoMetadataListCreate.as_view()),
-    path('video-metadata/<int:pk>/', views.VideoMetadataRetrieveUpdateDestroy.as_view()),
+    path('video-metadata/', views.VideoMetadataListCreate.as_view(), name="video_metadata_list_create"),
+    path('video-metadata/<int:pk>/', views.VideoMetadataRetrieveUpdateDestroy.as_view(), name="video_metadata_detail"),
     
-    # Deceased-Video (Tabla puente) #Tiene problemas por ser pk compuesta (solo funciona el create)
-    path('deceased-videos/', views.DeceasedVideoListCreate.as_view()),
-    path('deceased-videos/<int:pk>/', views.DeceasedVideoRetrieveUpdateDestroy.as_view()),
+    # Deceased-Video (Tabla puente)
+    path('deceased-videos/', views.DeceasedVideoListCreate.as_view(), name="deceased_video_list_create"),
+    path('deceased-videos/<int:pk>/', views.DeceasedVideoRetrieveUpdateDestroy.as_view(), name="deceased_video_detail"),
     
     # Image
-    path('images/', views.ImageListCreate.as_view()),
-    path('images/<int:pk>/', views.ImageRetrieveUpdateDestroy.as_view()),
+    path('images/', views.ImageListCreate.as_view(), name="image_list_create"),
+    path('images/<int:pk>/', views.ImageRetrieveUpdateDestroy.as_view(), name="image_detail"),
     
     # Image Metadata
-    path('image-metadata/', views.ImageMetadataListCreate.as_view()),
-    path('image-metadata/<int:pk>/', views.ImageMetadataRetrieveUpdateDestroy.as_view()),
+    path('image-metadata/', views.ImageMetadataListCreate.as_view(), name="image_metadata_list_create"),
+    path('image-metadata/<int:pk>/', views.ImageMetadataRetrieveUpdateDestroy.as_view(), name="image_metadata_detail"),
     
-    # Deceased-Image (Tabla puente) #Tiene problemas por ser pk compuesta (solo funciona el create) 
-    path('deceased-images/', views.DeceasedImageListCreate.as_view()),
-    path('deceased-images/<int:pk>/', views.DeceasedImageRetrieveUpdateDestroy.as_view()),
+    # Deceased-Image (Tabla puente)
+    path('deceased-images/', views.DeceasedImageListCreate.as_view(), name="deceased_image_list_create"),
+    path('deceased-images/<int:pk>/', views.DeceasedImageRetrieveUpdateDestroy.as_view(), name="deceased_image_detail"),
     
-    # Relationships # La pk es rara en esta tabla, la tiene en var y no en int, pero funciona bien
-    path('relationship-types/', views.RelationshipTypeListCreate.as_view()),
-    path('relationship-types/<str:pk>/', views.RelationshipTypeRetrieveUpdateDestroy.as_view()),
-    path('relations/', views.RelationListCreate.as_view()),
-    path('relations/<int:pk>/', views.RelationRetrieveUpdateDestroy.as_view()),
+    # Relationships
+    path('relationship-types/', views.RelationshipTypeListCreate.as_view(), name="relationship_type_list_create"),
+    path('relationship-types/<str:pk>/', views.RelationshipTypeRetrieveUpdateDestroy.as_view(), name="relationship_type_detail"),
+    path('relations/', views.RelationListCreate.as_view(), name="relation_list_create"),
+    path('relations/<int:pk>/', views.RelationRetrieveUpdateDestroy.as_view(), name="relation_detail"),
     
-    # User-Deceased #Tiene problemas por ser pk compuesta (solo funciona el create) 
-    path('user-deceased/', views.UserDeceasedListCreate.as_view()),
-    path('user-deceased/<int:pk>/', views.UserDeceasedRetrieveUpdateDestroy.as_view()),
+    # User-Deceased
+    path('user-deceased/', views.UserDeceasedListCreate.as_view(), name="user_deceased_list_create"),
+    path('user-deceased/<int:pk>/', views.UserDeceasedRetrieveUpdateDestroy.as_view(), name="user_deceased_detail"),
     
-    # Requests #Tiene problemas por ser pk compuesta (solo funciona el create) 
-    path('requests/', views.RequestListCreate.as_view()),
-    path('requests/<int:pk>/', views.RequestRetrieveUpdateDestroy.as_view()),
+    # Requests
+    path('requests/', views.RequestListCreate.as_view(), name="request_list_create"),
+    path('requests/<int:pk>/', views.RequestRetrieveUpdateDestroy.as_view(), name="request_detail"),
     
     # Notifications
-    path('notifications/', views.NotificationListCreate.as_view()),
-    path('notifications/<int:pk>/', views.NotificationRetrieveUpdateDestroy.as_view()),
+    path('notifications/', views.NotificationListCreate.as_view(), name="notification_list_create"),
+    path('notifications/<int:pk>/', views.NotificationRetrieveUpdateDestroy.as_view(), name="notification_detail"),
     
     # QR Codes
-    path('qr-codes/', views.QRListCreate.as_view()),
-    path('qr-codes/<int:pk>/', views.QRRetrieveUpdateDestroy.as_view()),
+    path('qr-codes/', views.QRListCreate.as_view(), name="qr_list_create"),
+    path('qr-codes/<int:pk>/', views.QRRetrieveUpdateDestroy.as_view(), name="qr_detail"),
 
     # Google AUTH
     path('auth/google/', views.google_login, name='google_login'),
